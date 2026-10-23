@@ -1,0 +1,156 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id         String   @id @default(uuid())
+  google_id  String   @unique
+  name       String
+  email      String   @unique
+  avatar_url String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  sessions  Sessions[]
+  senders   Senders[]
+  campaigns Campaigns[]
+  slack     SlackConnections?
+}
+
+model Sessions {
+  id           String   @id @default(uuid())
+  user_id      String
+  token_hash   String   @unique
+  expires_at   DateTime
+  created_at   DateTime @default(now())
+  last_seen_at DateTime?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+}
+
+model Senders {
+  id                      String   @id @default(uuid())
+  user_id                 String
+  email                   String
+  display_name            String?
+  smtp_host               String
+  smtp_port               Int
+  smtp_user               String
+  smtp_password_encrypted String
+  is_active               Boolean  @default(true)
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+
+  user     User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  campaigns Campaigns[]
+
+  @@unique([user_id, email])
+  @@index([is_active])
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+
+model Campaigns {
+  id            String         @id @default(uuid())
+  user_id       String
+  sender_id     String
+  name          String?
+  subject       String
+  body_text     String         @db.LongText
+  body_html     String?        @db.LongText
+  start_at      DateTime
+  delay_seconds Int
+  hourly_limit  Int
+  status        CampaignStatus @default(DRAFT)
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+
+  user      User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  sender    Senders            @relation(fields: [sender_id], references: [id])
+  deliveries EmailDeliveries[]
+
+  @@index([user_id, status])
+  @@index([sender_id, status])
+}
+
+enum DeliveryStatus {
+  SCHEDULED
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+model EmailDeliveries {
+  id                  String         @id @default(uuid())
+  campaign_id         String
+  recipient_email     String
+  scheduled_at        DateTime
+  status              DeliveryStatus @default(SCHEDULED)
+  sent_at             DateTime?
+  provider_message_id String?
+  attempt_count       Int            @default(0)
+  last_error          String?        @db.Text
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+
+  campaign Campaigns          @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
+  attempts  DeliveryAttempts[]
+
+  @@unique([campaign_id, recipient_email])
+  @@index([status, scheduled_at])
+  @@index([campaign_id, status])
+  @@index([recipient_email])
+}
+
+enum AttemptOutcome {
+  PROCESSING
+  SENT
+  RETRYABLE
+  FAILED
+  UNKNOWN
+}
+
+model DeliveryAttempts {
+  id                  String         @id @default(uuid())
+  delivery_id         String
+  attempt_number      Int
+  started_at          DateTime       @default(now())
+  finished_at         DateTime?
+  outcome             AttemptOutcome @default(PROCESSING)
+  error_message       String?        @db.Text
+  provider_message_id String?
+
+  delivery EmailDeliveries @relation(fields: [delivery_id], references: [id], onDelete: Cascade)
+
+  @@unique([delivery_id, attempt_number])
+  @@index([delivery_id, started_at])
+}
+
+model SlackConnections {
+  id                   String   @id @default(uuid())
+  user_id              String   @unique
+  team_id              String?
+  team_name            String?
+  bot_token_encrypted  String   @db.Text
+  alert_channel_id     String?
+  connected_at         DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
