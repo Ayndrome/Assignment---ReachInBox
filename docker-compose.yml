@@ -43,6 +43,14 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
 
+  mailpit:
+    image: axllent/mailpit
+    container_name: reachinbox-mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+
 volumes:
   mysql_data:
   redis_data:

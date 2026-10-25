@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .env
+
+li.md
+task.md

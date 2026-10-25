@@ -27,6 +27,6 @@
     "moduleDetection": "force",
   },
 
-    "include": ["api/src/**/*", "worker/src/**/*", "lib/**/*", "prisma7.config.ts"]
+    "include": ["api/src/**/*", "worker/src/**/*", "lib/**/*", "prisma7.config.ts", "shared/src/email", "shared/src/queue"]
   
 }

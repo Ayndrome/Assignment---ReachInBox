@@ -108,6 +108,7 @@ model EmailDeliveries {
   last_error          String?        @db.Text
   created_at          DateTime       @default(now())
   updated_at          DateTime       @updatedAt
+  processing_started_at DateTime?
 
   campaign Campaigns          @relation(fields: [campaign_id], references: [id], onDelete: Cascade)
   attempts  DeliveryAttempts[]
@@ -153,4 +154,32 @@ model SlackConnections {
   updated_at            DateTime @updatedAt
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+model OutboxEvents {
+  id           String       @id @default(uuid())
+  event_type   String
+  aggregate_id String
+  payload      Json
+  status       OutboxStatus @default(PENDING)
+  attempts     Int          @default(0)
+  available_at DateTime     @default(now())
+  published_at DateTime?
+  locked_at    DateTime?
+  last_error   String?      @db.Text
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+
+  @@index([status, available_at])
+  @@index([aggregate_id])
+  @@index([status, locked_at])
 }
